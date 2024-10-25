@@ -23,5 +23,5 @@ wget -P tools/DepthPro/checkpoints https://ml-site.cdn-apple.com/models/depth-pr
 wget -P tools/OneFormer/checkpoints https://shi-labs.com/projects/oneformer/ade20k/coco_pretrain_1280x1280_150_16_dinat_l_oneformer_ade20k_160k.pth 
 
 # stable diffusion - lcm
-# wget -P tools/StableDiffusion/ckpt  # original SD1.5 ckpt will be automatically downloaded from https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5
-wget -P tools/StableDiffusion/ckpt https://hf-mirror.com/latent-consistency/lcm-lora-sdv1-5/resolve/main/pytorch_lora_weights.safetensors
+# original SD1.5 ckpt will be automatically downloaded from https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5
+wget -P tools/StableDiffusion/lcm_ckpt https://huggingface.co/latent-consistency/lcm-lora-sdv1-5/resolve/main/pytorch_lora_weights.safetensors

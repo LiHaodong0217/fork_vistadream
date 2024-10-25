@@ -36,6 +36,26 @@ class Pipeline():
         if not os.path.exists(dir):
             os.makedirs(dir)
 
+    def _resize_input(self,fn):
+        resize_long_edge = int(self.cfg.scene.input.resize_long_edge)
+        print(f'[Preprocess...] Resize the long edge of input image to {resize_long_edge}.')
+        spl = str.rfind(fn,'.')
+        backup_fn = fn[:spl] + '.original' + fn[spl:]
+        rgb = Image.open(fn)
+        rgb.save(backup_fn) # back up original image 
+        rgb = np.array(Image.open(fn))[:,:,:3]/255.
+        H,W = rgb.shape[0:2]
+        if H>W:
+            W = int(W*resize_long_edge/H)
+            H = resize_long_edge
+        else:
+            H = int(H*resize_long_edge/W)
+            W = resize_long_edge
+        rgb = cv2.resize(rgb,(W,H))
+        pic = (rgb * 255.0).clip(0, 255)
+        pic_save = Image.fromarray(pic.astype(np.uint8))
+        pic_save.save(fn)
+
     def _initialization(self,rgb):
         rgb = np.array(rgb)[:,:,:3]
         # conduct outpainting on rgb and change cu,cv
@@ -146,7 +166,9 @@ class Pipeline():
             self.scene = GS_Train_Tool(self.scene,iters=self.opt_iters_per_frame)(self.scene.frames)
 
     def _MCS_Refinement(self):
-        refiner = HackSD_MCS(device='cuda',use_lcm=True,denoise_steps=self.mcs_iterations)
+        refiner = HackSD_MCS(device='cuda',use_lcm=True,denoise_steps=self.mcs_iterations,
+                             sd_ckpt=self.cfg.model.optimize.sd,
+                             lcm_ckpt=self.cfg.model.optimize.lcm)
         self.MVDPS = Refinement_Tool_MCS(self.scene,device='cuda',
                                          refiner=refiner,
                                          traj_type=self.traj_type,
@@ -174,6 +196,7 @@ class Pipeline():
         self.mcs_iterations = self.cfg.scene.mcs.steps
         self.mcs_gsopt_per_frame = self.cfg.scene.mcs.gsopt_iters
         # coarse scene
+        self._resize_input(rgb_fn)
         dir = rgb_fn[:str.rfind(rgb_fn,'/')]
         rgb = Image.open(rgb_fn)
         self._coarse_scene(rgb)
