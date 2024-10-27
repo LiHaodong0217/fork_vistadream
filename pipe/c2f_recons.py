@@ -19,7 +19,14 @@ from ops.gs.basic import Frame,Gaussian_Scene
 
 from ops.mcs import HackSD_MCS
 from pipe.refine_mvdps import Refinement_Tool_MCS
-        
+import debugpy
+# try:
+#     # 5678 is the default attach port in the VS Code debug configurations. Unless a host and port are specified, host defaults to 127.0.0.1
+#     debugpy.listen(("localhost", 9501))
+#     print("Waiting for debugger attach")
+#     debugpy.wait_for_client()
+# except Exception as e:
+#     pass        
 class Pipeline():
     def __init__(self,cfg) -> None:
         self.device = 'cuda'
@@ -178,6 +185,7 @@ class Pipeline():
         self.scene = self.MVDPS()
         refiner.to('cpu')
 
+
     def __call__(self):
         rgb_fn = self.cfg.scene.input.rgb
         # coarse
@@ -205,7 +213,6 @@ class Pipeline():
         self._MCS_Refinement()
         torch.save(self.scene,f'{dir}/scene.pth')
         self.checkor._render_video(self.scene,save_dir=f'{dir}/')
-
     
     
     

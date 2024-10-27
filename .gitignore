@@ -12,3 +12,5 @@ __pycache__
 */*/*/*/*/__pycache__
 
 /tools/
+/bakLlava-v1-hf/
+/stable-diffusion-1.5/
