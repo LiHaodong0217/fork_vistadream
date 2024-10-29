@@ -37,6 +37,12 @@ class GS_Train_Tool():
     def __init__(self,
                  GS:Gaussian_Scene,
                  iters = 100) -> None:
+        '''
+        1. 定义Gaussian更新剪枝等参数
+        2. 定义Gaussian各参数更新的学习率
+        3. 定义被学习的Gaussian(就是粗Gaussian)
+        4. 定义优化过程的学习率，迭代器，loss函数
+        '''
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         # hyperparameters for prune, densify, and update
         self.lr_factor = 1.00

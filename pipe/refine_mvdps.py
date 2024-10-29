@@ -171,34 +171,42 @@ class Refinement_Tool_MCS():
         return tensor
 
     def _x0_rectification(self, iters):
-        '''gaussian initialization
-         123123
-          123
-            '''
-        CGS = deepcopy(self.coarse_GS)
-        for gf in CGS.gaussian_frames:
+        '''
+         1. Gaussian_Scene(粗Gaussian)类对象CGS
+         3. 注意两个rgb_lossfunc是不一样的
+         在GS_Train_Tool即精细化Gaussian里面定义的loss是优化Gaussian的loss
+         在这个def函数里面的rgb_lossfunc是MCS多图优化的loss
+         4. loss设计
+         先在粗Gaussian(有10帧)里面选前两帧做RGB loss*细Gaussian帧数
+         再加上细Gaussian中的RGB loss
+         5. 修改后：
+         loss：外插前后帧的depth loss，一内插一外插的语义loss
+         先有的参数：内插所有帧的RGB和深度
+         还需要输入的参数：外插的深度，内外插语义图
+         我要写个函数得到外插的深度和内外插的语义图
+           '''
+        CGS = deepcopy(self.coarse_GS)#self.coarse_GS是Gaussian_Scene类对象
+        for gf in CGS.gaussian_frames:#这里面一共有10帧
             gf._require_grad(True)
-        self.refine_GS = GS_Train_Tool(CGS)
+        self.refine_GS = GS_Train_Tool(CGS)#定义细Gaussian参数
         # rectification
         for iter in range(iters):
             loss = 0.
             # supervise on input view
             for i in range(2):
                 keep_frame :Frame = self.coarse_GS.frames[i]
-                
                 render_rgb,render_dpt,render_alpha = self.refine_GS._render(keep_frame)
-                loss_rgb = self.rgb_lossfunc(render_rgb,self._to_cuda(keep_frame.rgb),valid_mask=keep_frame.inpaint)
+                loss_rgb = self.rgb_lossfunc(render_rgb,self._to_cuda(keep_frame.rgb),valid_mask=keep_frame.inpaint)#valid_mask全是True
                 loss += loss_rgb*len(self.refine_frames)
-                loss_perturbation_depth =   (1 - pearson_corrcoef(rendered_depth.reshape(-1, 1)[:, 0], - gt_depth.reshape(-1, 1)[:, 0]))
             # # then multiview supervision
-            # for i,frame in enumerate(self.refine_frames):
-            #     render_rgb,render_dpt,render_alpha = self.refine_GS._render(frame)
+            for i,frame in enumerate(self.refine_frames):
+                render_rgb,render_dpt,render_alpha = self.refine_GS._render(frame)
             #     loss_rgb_item = self.rgb_lossfunc(denoise_rgb[i],render_rgb)
             #     loss += loss_rgb_item
-            # optimization
-            loss.backward()  
-            self.refine_GS.optimizer.step()
-            self.refine_GS.optimizer.zero_grad()
+            #optimization
+            loss.backward()  #反向传播计算梯度
+            self.refine_GS.optimizer.step()#更新模型参数
+            self.refine_GS.optimizer.zero_grad()#清除梯度缓存
         
     def _step_gaussian_optimization(self,step):
         # denoise to x0 and d0
@@ -223,6 +231,7 @@ class Refinement_Tool_MCS():
             x0_rect = torch.cat(x0_rect,dim=0)
         # rectification
         self.RGB_LCM._step_denoise(rgb_t,rgb_noise_pr,x0_rect,rect_w=self.rect_w) 
+        
 
     def __call__(self):
         # warmup

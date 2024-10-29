@@ -208,9 +208,13 @@ class Gaussian_Frame():
     
 class Gaussian_Scene():  
     def __init__(self,cfg=None):
+        """
+        1. 全部帧放self.frames中，但是优化后的图片放self.gaussian_frames中
+        2. 定义激活函数和轨迹的参数
+        """
         # frames initialing the frame
         self.frames = []
-        self.gaussian_frames: list[Gaussian_Frame] = [] # gaussian frame require training at this optimization
+        self.gaussian_frames: list[Gaussian_Frame] = [] # 这个是一个高级提示写法，其实就是用[]空列表赋值，list[Gaussian_Frame]只是提示里面存放Gaussian帧
         # activate fuctions
         self.rgbs_act    = torch.sigmoid
         self.scales_act  = torch.exp
