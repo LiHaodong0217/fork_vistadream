@@ -20,13 +20,13 @@ from ops.gs.basic import Frame,Gaussian_Scene
 from ops.mcs import HackSD_MCS
 from pipe.refine_mvdps import Refinement_Tool_MCS
 import debugpy
-# try:
-#     # 5678 is the default attach port in the VS Code debug configurations. Unless a host and port are specified, host defaults to 127.0.0.1
-#     debugpy.listen(("localhost", 9501))
-#     print("Waiting for debugger attach")
-#     debugpy.wait_for_client()
-# except Exception as e:
-#     pass        
+try:
+    # 5678 is the default attach port in the VS Code debug configurations. Unless a host and port are specified, host defaults to 127.0.0.1
+    debugpy.listen(("localhost", 9501))
+    print("Waiting for debugger attach")
+    debugpy.wait_for_client()
+except Exception as e:
+    pass        
 class Pipeline():
     def __init__(self,cfg) -> None:
         self.device = 'cuda'
@@ -122,6 +122,7 @@ class Pipeline():
     def _next_frame(self,margin=32):
         # select the frame with largest holes but less than 60% 
         inpaint_area_ratio = []
+        
         for pose in self.dense_trajs:
             temp_frame = self._pose_to_frame(pose,margin)
             inpaint_mask = temp_frame.inpaint 

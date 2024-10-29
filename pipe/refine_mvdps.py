@@ -16,7 +16,7 @@ from ops.utils import *
 from ops.gs.train import *
 from ops.trajs import _generate_trajectory
 from ops.gs.basic import Frame,Gaussian_Scene
-
+from torchmetrics.functional.regression import pearson_corrcoef
 class Refinement_Tool_MCS():
     def __init__(self,
                  coarse_GS:Gaussian_Scene,
@@ -78,6 +78,83 @@ class Refinement_Tool_MCS():
         for frame in self.refine_frames:
             frame = temp_scene._render_for_inpaint(frame)
             
+    # def _mv_init(self):
+    #     rgbs = []
+    #     # only for inpainted images
+    #     for frame in self.refine_frames:
+    #         # rendering at now; all in the same shape
+    #         render_rgb,render_dpt,render_alpha=self.coarse_GS._render_RGBD(frame)
+    #         # diffusion images
+    #         rgbs.append(render_rgb.permute(2,0,1)[None])
+    #     self.rgbs = torch.cat(rgbs,dim=0)
+    #     self.RGB_LCM._encode_mv_init_images(self.rgbs)
+
+    # def _to_cuda(self,tensor):
+    #     tensor = torch.from_numpy(tensor.astype(np.float32)).to('cuda')
+    #     return tensor
+
+    # def _x0_rectification(self, denoise_rgb, iters):
+    #     # gaussian initialization
+    #     CGS = deepcopy(self.coarse_GS)
+    #     for gf in CGS.gaussian_frames:
+    #         gf._require_grad(True)
+    #     self.refine_GS = GS_Train_Tool(CGS)
+    #     # rectification
+    #     for iter in range(iters):
+    #         loss = 0.
+    #         # supervise on input view
+    #         for i in range(2):
+    #             keep_frame :Frame = self.coarse_GS.frames[i]
+    #             render_rgb,render_dpt,render_alpha = self.refine_GS._render(keep_frame)
+    #             loss_rgb = self.rgb_lossfunc(render_rgb,self._to_cuda(keep_frame.rgb),valid_mask=keep_frame.inpaint)
+    #             loss += loss_rgb*len(self.refine_frames)
+    #         # then multiview supervision
+    #         for i,frame in enumerate(self.refine_frames):
+    #             render_rgb,render_dpt,render_alpha = self.refine_GS._render(frame)
+    #             loss_rgb_item = self.rgb_lossfunc(denoise_rgb[i],render_rgb)
+    #             loss += loss_rgb_item
+    #         # optimization
+    #         loss.backward()  
+    #         self.refine_GS.optimizer.step()
+    #         self.refine_GS.optimizer.zero_grad()
+        
+    # def _step_gaussian_optimization(self,step):
+    #     # denoise to x0 and d0
+    #     with torch.no_grad():
+    #         # we left the last 2 steps for stronger guidances
+    #         rgb_t = self.RGB_LCM.timesteps[-self.steps+step]
+    #         rgb_t = torch.tensor([rgb_t]).to(self.device)
+    #         rgb_noise_pr,rgb_denoise = self.RGB_LCM._denoise_to_x0(rgb_t,self.rgb_prompt_latent)
+    #         rgb_denoise = rgb_denoise.permute(0,2,3,1)
+    #     # rendering each frames and weight-able refinement
+    #     self._x0_rectification(rgb_denoise,self.n_gsopt_iters)      
+    #     return rgb_t, rgb_noise_pr
+
+    # def _step_diffusion_rectification(self, rgb_t, rgb_noise_pr):
+    #     # re-rendering RGB
+    #     with torch.no_grad():
+    #         x0_rect = []
+    #         for i,frame in enumerate(self.refine_frames):
+    #             re_render_rgb,_,re_render_alpha= self.refine_GS._render(frame)
+    #             # avoid rasterization holes yield more block holes and more
+    #             x0_rect.append(re_render_rgb.permute(2,0,1)[None])
+    #         x0_rect = torch.cat(x0_rect,dim=0)
+    #     # rectification
+    #     self.RGB_LCM._step_denoise(rgb_t,rgb_noise_pr,x0_rect,rect_w=self.rect_w) 
+
+    # def __call__(self):
+    #     # warmup
+    #     self._pre_process()
+    #     self._mv_init()
+    #     for step in tqdm.tqdm(range(self.steps)):
+    #         rgb_t, rgb_noise_pr = self._step_gaussian_optimization(step)
+    #         self._step_diffusion_rectification(rgb_t, rgb_noise_pr)
+    #     scene = self.refine_GS.GS
+    #     for gf in scene.gaussian_frames:
+    #         gf._require_grad(False)
+    #     return scene
+
+
     def _mv_init(self):
         rgbs = []
         # only for inpainted images
@@ -93,8 +170,11 @@ class Refinement_Tool_MCS():
         tensor = torch.from_numpy(tensor.astype(np.float32)).to('cuda')
         return tensor
 
-    def _x0_rectification(self, denoise_rgb, iters):
-        # gaussian initialization
+    def _x0_rectification(self, iters):
+        '''gaussian initialization
+         123123
+          123
+            '''
         CGS = deepcopy(self.coarse_GS)
         for gf in CGS.gaussian_frames:
             gf._require_grad(True)
@@ -105,14 +185,16 @@ class Refinement_Tool_MCS():
             # supervise on input view
             for i in range(2):
                 keep_frame :Frame = self.coarse_GS.frames[i]
+                
                 render_rgb,render_dpt,render_alpha = self.refine_GS._render(keep_frame)
                 loss_rgb = self.rgb_lossfunc(render_rgb,self._to_cuda(keep_frame.rgb),valid_mask=keep_frame.inpaint)
                 loss += loss_rgb*len(self.refine_frames)
-            # then multiview supervision
-            for i,frame in enumerate(self.refine_frames):
-                render_rgb,render_dpt,render_alpha = self.refine_GS._render(frame)
-                loss_rgb_item = self.rgb_lossfunc(denoise_rgb[i],render_rgb)
-                loss += loss_rgb_item
+                loss_perturbation_depth =   (1 - pearson_corrcoef(rendered_depth.reshape(-1, 1)[:, 0], - gt_depth.reshape(-1, 1)[:, 0]))
+            # # then multiview supervision
+            # for i,frame in enumerate(self.refine_frames):
+            #     render_rgb,render_dpt,render_alpha = self.refine_GS._render(frame)
+            #     loss_rgb_item = self.rgb_lossfunc(denoise_rgb[i],render_rgb)
+            #     loss += loss_rgb_item
             # optimization
             loss.backward()  
             self.refine_GS.optimizer.step()
@@ -146,9 +228,11 @@ class Refinement_Tool_MCS():
         # warmup
         self._pre_process()
         self._mv_init()
-        for step in tqdm.tqdm(range(self.steps)):
-            rgb_t, rgb_noise_pr = self._step_gaussian_optimization(step)
-            self._step_diffusion_rectification(rgb_t, rgb_noise_pr)
+        # for step in tqdm.tqdm(range(self.steps)):
+        #     rgb_t, rgb_noise_pr = self._step_gaussian_optimization(step)
+        #     self._step_diffusion_rectification(rgb_t, rgb_noise_pr)
+        # 调用方法进行优化
+        self._x0_rectification(iters=self.n_gsopt_iters)
         scene = self.refine_GS.GS
         for gf in scene.gaussian_frames:
             gf._require_grad(False)

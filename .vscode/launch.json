@@ -11,6 +11,10 @@
             "connect": {
                 "host": "localhost",
                 "port": 9501
+            },
+            "cwd": "${workspaceFolder}",  // 设置工作目录为项目根目录
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"  // 添加 PYTHONPATH 确保模块路径正确
             }
         },
         {
@@ -18,7 +22,11 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",  // 设置工作目录为项目根目录
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"  // 添加 PYTHONPATH 确保模块路径正确
+            }
         }
     ]
 }

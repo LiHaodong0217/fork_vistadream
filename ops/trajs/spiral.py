@@ -29,6 +29,7 @@ def look_at(camera_position, target_position):
 
 def spiral_camera_poses(num_frames, radius, forward_ratio = 0.2, backward_ratio = 0.8, rotation_times = 0.3, look_at_times = 0.5):
     x, y, z = generate_spiral_trajectory(num_frames, radius*rotation_times, forward_ratio, backward_ratio)
+    T_perturbation_stage3 = T + np.random.uniform(-0.05 * 4, 0.05 * 4, size=(1, 3))
     target_position = np.array([0,0,radius*look_at_times])
     camera_positions = np.vstack([x, y, z]).T
     camera_poses = []
